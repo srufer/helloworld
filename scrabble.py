@@ -1,3 +1,4 @@
+#how will this affect git? Let's find out!
 import itertools
 
 SCRABBLE_DICTIONARY = ['sour', 'spur', 'spud', 'stud', 'stun', 'a', 'dog', 'terrible', 'hopeless']
@@ -51,6 +52,9 @@ class Ladder():
         self.length = 0
 
     def is_scrabble_ladder(self):
+        #if self.length > 0 and self.length == len(self.ladder):
+            #return True
+        #return False
         if len(self.ladder) < 3 or len(self.ladder) % 2 != 1:
             return False
         peak = len(self.ladder) / 2 - 1
@@ -62,17 +66,17 @@ class Ladder():
                 if not self.ladder[n].value > self.ladder[n + 1].value:
                     return False
         return True
-
+        
         if self.length > 0 and self.length == len(self.ladder):
             return True
         return False
 
     def add_word(self, word):
-        if word_is_valid_addition(word):
+        if self.word_is_valid_addition(word):
             self.ladder.append(word)
-            if len(self.ladder) > 1 and not descending and word.value < self.ladder[-2]:
-                descending = True
-                self.length = len(self.ladder) * 2 - 1
+            if len(self.ladder) > 1 and not self.descending and word.value < self.ladder[-2].value:
+                self.descending = True
+                self.length = len(self.ladder) * 2 - 3
 
     def word_is_valid_addition(self, word):
         # the ladder is empty, so any word works
@@ -207,3 +211,15 @@ ladders = [ladder1, ladder2, ladder3, ladder4, ladder5]
 
 bla = Ladders(dictionary)
 bla.calculate_highest_score()
+aladder = Ladder([])
+print(aladder.length)
+aladder.add_word(Word("sour"))
+print(aladder.length)
+aladder.add_word(Word("spur"))
+print(aladder.length)
+aladder.add_word(Word("spud"))
+print(aladder.length)
+aladder.add_word(Word("stud"))
+print(aladder.length)
+aladder.add_word(Word("stun"))
+print(aladder.length)
