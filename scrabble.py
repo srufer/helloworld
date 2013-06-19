@@ -1,8 +1,6 @@
 #how will this affect git? Let's find out!
 # allow setting of ladder length
 # fix creation of unnecessary ladders
-# maybe remove useless code in word_is_valid_addition() (checking for complete ladders, checking for duplicate words)
-# the Ladder object doesn't care about word length and probably throws an error if it isn't consistent (not an issue at the moment but makes the Ladder class hard to reuse)
 import itertools
 import copy
 
@@ -74,6 +72,12 @@ class Ladder():
             return True
         return False
 
+    def add_word_without_check(self, word):
+        self.ladder.append(word)
+        if not self.descending and len(self.ladder) > 1 and word.value < self.ladder[-2].value: #self.ladder[-2] represents the last word in the ladder before the new one was added
+            self.descending = True
+            self.length = len(self.ladder) * 2 - 3
+
     def word_is_valid_addition(self, word):
         # set a useful variable
         current_length = len(self.ladder)
@@ -82,12 +86,16 @@ class Ladder():
         if current_length == 0:
             return True
 
-        # set some more useful variables
+        # set another useful variable
         last_word = self.ladder[-1]
 
-        # Ladder is complete
-        if self.length == current_length:
-            return False
+        # Ladder is complete - NOT EVER CHECKED FOR
+#        if self.length == current_length:
+#            return False
+
+        # Word has a different amount of characters than the words in the ladder - NOT EVER CHECKED FOR
+#        if len(word.word) != len(last_word.word):
+#            return False
 
         # check similarity of words
         difference = False
@@ -98,10 +106,10 @@ class Ladder():
                 else:
                     difference = True
 
-        # Ladder already contains the word
-        for n in range(current_length):
-            if self.ladder[n].word == word.word:
-                return False
+        # Ladder already contains the word - NOT EVER CHECKED FOR
+#        for n in range(current_length):
+#            if self.ladder[n].word == word.word:
+#                return False
 
         # If the ladder requires a certain length, compare word values differently:
         if self.ladder_length_matters:
@@ -187,16 +195,15 @@ class Ladders():
                 return
             #if the ladder isn't complete, check more combinations
             for n in range(len(dictionary.words)):
-                new_ladder = copy.deepcopy(ladder)                                   #################### CREATES A NEW LADDER EVEN IF IT"LL NEVER BE USED
-                if new_ladder.add_word(dictionary.words[n]):
+                if ladder.word_is_valid_addition(dictionary.words[n]):
+                    #make a new ladder and add the word
+                    new_ladder = copy.deepcopy(ladder)
+                    new_ladder.add_word_without_check(dictionary.words[n])
+                    #make a new dictionary that doesn't contain the word that was just added
                     new_dictionary = copy.deepcopy(dictionary)
                     new_dictionary.words.pop(n)
+                    #call the helper method again
                     method_helper(new_dictionary, new_ladder)
-                
-                #if ladder.word_is_valid_addition(word):
-                    #new_ladder = copy.deepcopy(ladder)
-                    #new_ladder.add_word(word)
-                    #method_helper(dictionary, new_ladder)
 
         # call the helper and print results
         method_helper(self.dictionary, Ladder(self.ladder_length))
@@ -213,7 +220,7 @@ class Ladders():
         if Ladder().is_valid_ladder_length(self.ladder_length):
             print("Ladder Length: " + str(self.ladder_length))
         else:
-            print("Ladder Length wasn't a factor")
+            print("Ladder Length wasn't a factor because an invalid ladder lenght was specified (less than 3 or divisible by 2)")
         if self.HIGHEST_SCORE == 0:
             print("There is no scrabble ladder with the given requirements")
         else:
