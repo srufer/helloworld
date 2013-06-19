@@ -1,8 +1,14 @@
 #how will this affect git? Let's find out!
+# allow setting of ladder length
+# fix creation of unnecessary ladders
+# maybe remove useless code in word_is_valid_addition() (checking for complete ladders, checking for duplicate words)
+# the Ladder object doesn't care about word length and probably throws an error if it isn't consistent (not an issue at the moment but makes the Ladder class hard to reuse)
 import itertools
+import copy
 
-SCRABBLE_DICTIONARY = ['sour', 'spur', 'spud', 'stud', 'stun', 'a', 'dog', 'terrible', 'hopeless']
-INTEGER = 4
+SCRABBLE_DICTIONARY = ['spur', 'sour', 'spud', 'stud', 'stun', 'a', 'dog', 'terrible', 'hopeless']
+WORD_LENGTH = 4
+LADDER_LENGTH = 3
 
 class Word():
 
@@ -31,81 +37,88 @@ class Word():
 class Dictionary():
 
     def __init__(self, list1, int1):
-        self.list1 = list1
-        self.int1 = int1
+        self.original_word_list = list1 #Currently not used, but is here just in case
+        self.word_length = int1
         self.words = [Word(word) for word in self.__filter_on_wordlength()]
 
     def __filter_on_wordlength(self):
-        return [word for word in self.list1 if len(word) == self.int1]
+        return [word for word in self.original_word_list if len(word) == self.word_length]
 
     def contains(word):
         if word in self.words:
             return True
         return False
 
-
 class Ladder():
 
-    def __init__(self, initial_ladder):
-        self.ladder = initial_ladder
+    def __init__(self, required_length = 0):
+        # If the requested ladder length is invalid, ignore ladder length as a criterion
+        self.ladder_length_matters = self.is_valid_ladder_length(required_length)
+        self.required_length = required_length # never used
+        self.half_length = (self.required_length - 1) / 2 # half of the length, rounded down. This is only used when the ladder has a required length
+        self.ladder = []
         self.descending = False
-        self.length = 0
+        self.length = -1
 
     def is_scrabble_ladder(self):
-        #if self.length > 0 and self.length == len(self.ladder):
-            #return True
-        #return False
-        if len(self.ladder) < 3 or len(self.ladder) % 2 != 1:
-            return False
-        peak = len(self.ladder) / 2 - 1
-        for n in range(len(self.ladder) - 1):
-            if n <= peak:
-                if not self.ladder[n].value < self.ladder[n + 1].value:
-                    return False
-            elif n > peak:
-                if not self.ladder[n].value > self.ladder[n + 1].value:
-                    return False
-        return True
-        
-        if self.length > 0 and self.length == len(self.ladder):
+        if self.length == len(self.ladder):
             return True
         return False
-
+        
     def add_word(self, word):
         if self.word_is_valid_addition(word):
             self.ladder.append(word)
-            if len(self.ladder) > 1 and not self.descending and word.value < self.ladder[-2].value:
+            if not self.descending and len(self.ladder) > 1 and word.value < self.ladder[-2].value: #self.ladder[-2] represents the last word in the ladder before the new one was added
                 self.descending = True
                 self.length = len(self.ladder) * 2 - 3
+            return True
+        return False
 
     def word_is_valid_addition(self, word):
+        # set a useful variable
+        current_length = len(self.ladder)
+
         # the ladder is empty, so any word works
-        if len(self.ladder) == 0:
+        if current_length == 0:
             return True
+
+        # set some more useful variables
+        last_word = self.ladder[-1]
+
         # Ladder is complete
-        if self.length > 0 and self.length == len(self.ladder):
+        if self.length == current_length:
             return False
+
         # check similarity of words
         difference = False
         for n in range(len(word.word)):
-            if word.word[n] != self.ladder[-1].word[n]:
+            if word.word[n] != last_word.word[n]:
                 if difference:
                     return False
                 else:
                     difference = True
+
         # Ladder already contains the word
-        for n in range(len(self.ladder)):
+        for n in range(current_length):
             if self.ladder[n].word == word.word:
                 return False
+
+        # If the ladder requires a certain length, compare word values differently:
+        if self.ladder_length_matters:
+            if word.value > last_word.value and current_length <= self.half_length:
+                return True
+            if word.value < last_word.value and current_length > self.half_length:
+                return True
+            return False
+
         # New word's value is greater, and the ladder hasn't reached the "peak" yet
-        if word.value > self.ladder[-1].value and not self.descending:
+        if word.value > last_word.value and not self.descending:
             return True
-        # New word's value is less, and the ladder is past the "peak"
-        if word.value < self.ladder[-1].value and self.descending:
+
+        # Word has a lower value and the ladder is at least 2 words long
+        if word.value < last_word.value and len(self.ladder) > 1:
             return True
-        # Word has a lower value.
-        if word.value < self.ladder[-1].value and len(self.ladder) > 1:
-            return True
+
         return False
 
     def score(self):
@@ -128,9 +141,11 @@ class Ladder():
                 flag1 = False
         return flag1 or flag2
 
+    def is_valid_ladder_length(self, int1):
+        return False if int1 < 3 or int1 % 2 == 0 else True
 
     def __str__(self):
-        return_string = "This Ladder contains: "
+        return_string = "This Ladder has Length " + str(len(self.ladder)) + " and contains: "
         for word in self.ladder:
             return_string += str(word) + ", "
         return return_string
@@ -138,13 +153,13 @@ class Ladder():
     def __repr__(self):
         return self.__str__()
 
+
 class Ladders():
 
-    #HIGHEST_SCORE = 0
-    #HIGHEST_SCORE_LADDERS = []
-
-    def __init__(self, dictionary):
-        self.dictionary = dictionary
+    # if ladder_length isn't valid (it is < 3 or even), any ladder length is valid
+    def __init__(self, words, word_length, ladder_length = 0):
+        self.dictionary = Dictionary(words, word_length)
+        self.ladder_length = ladder_length
         self.HIGHEST_SCORE = 0
         self.HIGHEST_SCORE_LADDERS = []
 
@@ -155,6 +170,7 @@ class Ladders():
             #base case
             if ladder.is_scrabble_ladder():
                 print("found one")
+                # The ladder has the same value as the current high score
                 if ladder.score() == self.HIGHEST_SCORE:
                     #check for reverse duplicates
                     for ladder1 in self.HIGHEST_SCORE_LADDERS:
@@ -163,43 +179,64 @@ class Ladders():
                             return
                     self.HIGHEST_SCORE_LADDERS.append(ladder)
                     print("ADDED ONE")
+                # The ladder has a higher value than the current high score
                 if ladder.score() > self.HIGHEST_SCORE:
                     print("NEW HIGH SCORE")
                     self.HIGHEST_SCORE = ladder.score()
                     self.HIGHEST_SCORE_LADDERS = [ladder]
                 return
             #if the ladder isn't complete, check more combinations
-            for word in dictionary.words:
-                if ladder.word_is_valid_addition(word):
-                    #print(list(ladder.ladder))
-                    #print(list(ladder.ladder).append(word))
-                    a_list = list(ladder.ladder)
-                    a_list.append(word)
-                    #print(a_list)
-                    #method_helper(dictionary, Ladder(list(ladder.ladder).append(word)))
-                    method_helper(dictionary, Ladder(a_list))
+            for n in range(len(dictionary.words)):
+                new_ladder = copy.deepcopy(ladder)                                   #################### CREATES A NEW LADDER EVEN IF IT"LL NEVER BE USED
+                if new_ladder.add_word(dictionary.words[n]):
+                    new_dictionary = copy.deepcopy(dictionary)
+                    new_dictionary.words.pop(n)
+                    method_helper(new_dictionary, new_ladder)
+                
+                #if ladder.word_is_valid_addition(word):
+                    #new_ladder = copy.deepcopy(ladder)
+                    #new_ladder.add_word(word)
+                    #method_helper(dictionary, new_ladder)
 
+        # call the helper and print results
+        method_helper(self.dictionary, Ladder(self.ladder_length))
+        self.print_results()
+        
+    def print_results(self):
+        print("\n\n")
+        print("#######################################################################")
+        print("############################# RESULTS #################################")
+        print("#######################################################################")
+        # print the requirements
+        print("The reverse of a ladder is not printed (example: either (spur spud stud) or (stud spud spur) will display but not both)")
+        print("Word Length: " + str(self.dictionary.word_length))
+        if Ladder().is_valid_ladder_length(self.ladder_length):
+            print("Ladder Length: " + str(self.ladder_length))
+        else:
+            print("Ladder Length wasn't a factor")
+        if self.HIGHEST_SCORE == 0:
+            print("There is no scrabble ladder with the given requirements")
+        else:
+            print("The highest-scoring ladder's score was: " + str(self.HIGHEST_SCORE))
+            print(str(len(self.HIGHEST_SCORE_LADDERS)) + " ladder(s) had this score:")
+            for n in range(len(self.HIGHEST_SCORE_LADDERS)):
+                print(str(n + 1) + ": " + str(self.HIGHEST_SCORE_LADDERS[n]))
+        print("#######################################################################")
+        print("#######################################################################")
+        print("#######################################################################")
 
-        #for ladder in ladders:
-            #if ladder.is_scrabble_ladder():
-                #if ladder.score() > highest_score:
-                    #highest_score = ladder.score()
-            #else:
-                #pass
-        #return highest_score
+# Create a Ladders object and initialize it with the list of words
+# and the maximum word length, then calculate the highest scrabble
+# ladder score
+bla = Ladders(SCRABBLE_DICTIONARY, WORD_LENGTH, LADDER_LENGTH)
+bla.calculate_highest_score()
 
-        #ladders = []
-        #for word in self.dictionary.words:
-            #ladders.append(Ladder(itertools.product([word], self.dictionary)))
-            #ladders.append(Ladder([word]))
-        #for ladder in ladders:
-        method_helper(self.dictionary, Ladder([]))
-        print(self.HIGHEST_SCORE)
-        #print(self.HIGHEST_SCORE_LADDERS)
-        for ladder in self.HIGHEST_SCORE_LADDERS:
-            print(ladder)
-
-dictionary = Dictionary(SCRABBLE_DICTIONARY, 4)
+# this error prevents the junk after it from doing anything, so that
+# print statements don't show up that would otherwise result from
+# the following lines of code (which are for the most part junk, but
+# I might want them later)
+print("\n\n\nTHIS ERROR IS HERE ON PURPOSE")
+not_a_real_variable = this_variable_doesnt_exist
 
 ladder1 = Ladder([Word("sour")])
 ladder2 = Ladder([Word("sour"), Word("spur")])
@@ -208,18 +245,21 @@ ladder4 = Ladder([Word("sour"), Word("spur"), Word("spud"), Word("stud")])
 ladder5 = Ladder([Word("sour"), Word("spur"), Word("spud"), Word("stud"), Word("stun")])
 ladders = [ladder1, ladder2, ladder3, ladder4, ladder5]
 
-
-bla = Ladders(dictionary)
-bla.calculate_highest_score()
 aladder = Ladder([])
 print(aladder.length)
+print(aladder.is_scrabble_ladder())
 aladder.add_word(Word("sour"))
 print(aladder.length)
+print(aladder.is_scrabble_ladder())
 aladder.add_word(Word("spur"))
 print(aladder.length)
+print(aladder.is_scrabble_ladder())
 aladder.add_word(Word("spud"))
 print(aladder.length)
+print(aladder.is_scrabble_ladder())
 aladder.add_word(Word("stud"))
 print(aladder.length)
+print(aladder.is_scrabble_ladder())
 aladder.add_word(Word("stun"))
 print(aladder.length)
+print(aladder.is_scrabble_ladder())
